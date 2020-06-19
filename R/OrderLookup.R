@@ -5,10 +5,27 @@ library(DescTools)
 
 ###################
 # Import InstaCart Data
-match.orders <- function(df, 
-                        start.date=NULL, 
-                        end.date=NULL, 
-                        r1010.user.name=NULL, 
+
+#' Find equivalent transaction in TSMC POS system for every Order generated
+#' through InstaCart.
+#'
+#' @param df Can be either a dataframe exported from InstaCart containing all original
+#' columns or string for a CSV file exported from InstaCart.
+#' @param start.date Lower date limit of the search on 1010.
+#' @param end.date Upper date limit of the search on 1010.
+#' @param r1010.user.name String for 1010's user name. If NULL, input will be prompted in the Console.
+#' @param r1010.password String for 1010's password. If NULL, input will be prompted in the Console.
+#'
+#' @return returns a dataframe containing InstaCart Order Id's and their equivalent
+#' Transaction ID in our TMSC Pos System.
+#' @export
+#'
+#' @examples
+#'
+match_orders <- function(df,
+                        start.date=NULL,
+                        end.date=NULL,
+                        r1010.user.name=NULL,
                         r1010.password=NULL){
   #check arguments
   if (!exists('df')) {
@@ -20,14 +37,14 @@ match.orders <- function(df,
   } else {
     df <- as.data.frame(df)
   }
-  
+
   print("Processing")
   #start
   instac.df <- data.table(df) %>%
     select(Order.ID,
            Delivery.Date,
            Store.Location,
-           UPC.PLU, 
+           UPC.PLU,
            Qty,
            Item,
            Is.Redelivered,
@@ -50,17 +67,17 @@ match.orders <- function(df,
     select(-Delivery.Date, -UPC.PLU, -Instacart.Online.Price) %>% #remove helper cols
     group_by(Order.ID) %>% #add summarised columns
     mutate(insta.upcs.cnt=n(),
-           insta.order.qty=sum(Qty), 
+           insta.order.qty=sum(Qty),
            insta.net.sales=sum(Instacart.Online.Revenue),
            t.sub.items=sum(substituted.items)) %>%
     ungroup()
-  
+
 #####################################################
 # Import 1010 Data
-  
+
   #Check credentials
   if (!exists('r1010.user.name') | !exists('r1010.password')) {
-    
+
     #read user input
     r1010.user.name <- readline(prompt="Enter 1010's user name: ")
     r1010.password <- readline(prompt="Enter 1010's Password: ")
@@ -71,8 +88,8 @@ match.orders <- function(df,
    sess <- newSession(r1010.user.name, r1010.password, kill = "pos")
   }
    #query stores on 1010
-   stores.df <- tryCatch({openTable(sess, "savemart.stores", 
-                            row.range = 'all') %>% 
+   stores.df <- tryCatch({openTable(sess, "savemart.stores",
+                            row.range = 'all') %>%
                           select(store, city)},
                           error=stop("Could't log on to 1010. Check credentials and try again"))
 
@@ -80,11 +97,11 @@ match.orders <- function(df,
    instac.df <- instac.df %>%
      left_join(stores.df, by=c('Store.Location'='store')) %>%
      mutate(city.query=paste0("'",city,"'"))
-   
+
    if (is.null(start.date) | is.null(end.date)) {
      start.date <- format(min(instac.df$deliv.date)-4, "%Y%m%d")
      end.date <- format(min(instac.df$deliv.date)+7, "%Y%m%d")
-   } 
+   }
    print("Fetching 1010's data")
    #Query transactions on 1010
    eitem <- openTable(sess, "savemart.eitem")
@@ -96,7 +113,7 @@ match.orders <- function(df,
                                 col2="store" cols="division, city"
                                 type="exact"/>
                          <sel value="(between(date;', start.date,';', end.date,'))"/>
-                                      
+
                          <sel value="(city=', paste(unique(instac.df$city.query),
                                                     collapse = ' ') %>% as.factor(), ')"/>
                          <link table2="savemart.products" col="upc"
@@ -109,53 +126,53 @@ match.orders <- function(df,
                          <sel value="(~beginswith_ci(posdesc;\'CRV\')) &
                                       (~contains_ci(posdesc;\' fee \')) &
                                       (~contains_ci(posdesc;\' reusable bag \'))"/>
-                         <willbe name="eitemupccnt" 
-                                 value="g_cnt(transid upc;)" 
+                         <willbe name="eitemupccnt"
+                                 value="g_cnt(transid upc;)"
                                  label="eitem.upc.cnt"/>
-                         <willbe name="eitem_qty" 
-                                 value="g_sum(transid upc;;qty)" 
+                         <willbe name="eitem_qty"
+                                 value="g_sum(transid upc;;qty)"
                                  label="eitem.qty"/>
-                          <willbe name="eitem_net_sales" 
-                                 value="g_sum(transid upc;;net_sales)" 
+                          <willbe name="eitem_net_sales"
+                                 value="g_sum(transid upc;;net_sales)"
                                  label="eitem_net_sales"/>
                           <willbe name="insta_acc"
                                  value="if(padright(account;4)=5391;1;
                                         if(padright(account;4)=5553;1;0))"/>')
-  
+
   # run query
   eitem.df <- query(eitem, query.text, row.range = 'All')
   #convert date
   eitem.df$date <- as.Date(eitem.df$date)
-  
+
   #Narrow DF width and add aggregated columns
-  eitem.df <- eitem.df %>% select(date, 
-                                  store, 
-                                  transid, 
-                                  upc, 
-                                  qty, 
+  eitem.df <- eitem.df %>% select(date,
+                                  store,
+                                  transid,
+                                  upc,
+                                  qty,
                                   city,
-                                  account, 
-                                  insta_acc, 
-                                  posdesc, 
-                                  net_sales=eitem_net_sales, 
+                                  account,
+                                  insta_acc,
+                                  posdesc,
+                                  net_sales=eitem_net_sales,
                                   eitemupccnt,
                                   eitem.qty=eitem_qty)
-  
+
   ##########################################################
   #Prepare Instacart Data
-  
+
   #clock in
   start.time <- Sys.time()
   print("Processing. Might take a few seconds")
   #Match UPCS by transaction
   insta_1010_match.df <- data.table(instac.df) %>%
     select(Store.Location,
-           Order.ID, 
-           upc, 
-           Item, 
+           Order.ID,
+           upc,
+           Item,
            insta.net.sales) %>%
     #UPC lookup
-    full_join(y=eitem.df %>% 
+    full_join(y=eitem.df %>%
                 select(store,
                        upc,
                        transid,
@@ -164,7 +181,7 @@ match.orders <- function(df,
     filter(!is.na(transid) & !is.na(Order.ID)) %>%
     #add counts for each transaction
     group_by(Store.Location,
-             Order.ID, 
+             Order.ID,
              transid) %>%
     #add aux columns
     summarise(upcs.matched.in.eitem=n(),
@@ -172,14 +189,14 @@ match.orders <- function(df,
               insta.net.sales=mean(insta.net.sales)) %>%
     #pick transactions with most UPC matches
     top_n(1,insta_acc) %>% #select transactions where tender type is Instacart
-    top_n(1,upcs.matched.in.eitem) %>% #select transactions with most upc matches 
-    
+    top_n(1,upcs.matched.in.eitem) %>% #select transactions with most upc matches
+
     #add more transaction level details from Instacart
     plyr::join(y=instac.df %>%
                  select(Order.ID,
                         deliv.date,
                         insta.upcs.cnt,
-                        insta.order.qty, 
+                        insta.order.qty,
                         t.sub.items),
                by='Order.ID', type='left', match='first') %>%
     #add aux col
@@ -189,8 +206,8 @@ match.orders <- function(df,
     #join acc and date from eitem for each instac order
     plyr::join(y=eitem.df %>% select(transid,
                             eitem.date = date,
-                            city, 
-                            eitem.qty, 
+                            city,
+                            eitem.qty,
                             eitem.upc.cnt=eitemupccnt,
                             net_sales),
       by='transid', type='left', match='first') %>%
@@ -202,52 +219,52 @@ match.orders <- function(df,
     group_by(Order.ID) %>%
     #Filter best matches
     top_n(1,insta_acc) %>%
-    top_n(-1,qty.abs.diff) %>% 
+    top_n(-1,qty.abs.diff) %>%
     top_n(1,perc.upc.match) %>%
     top_n(1,abs(perc.upc.cnt.match)) %>%
     top_n(-1,abs(date.diff)) %>%
     #rearrenge columns
-    select(Store.Location, 
-           city,Order.ID, transid, 
+    select(Store.Location,
+           city,Order.ID, transid,
            deliv.date, eitem.date,
-           date.diff, insta_acc, 
-           insta.upcs.cnt, upcs.matched.in.eitem, 
-           t.sub.items, perc.upc.match, 
-           eitem.upc.cnt, perc.upc.cnt.match, 
-           insta.order.qty, eitem.qty, 
-           qty.abs.diff, insta.net.sales, 
+           date.diff, insta_acc,
+           insta.upcs.cnt, upcs.matched.in.eitem,
+           t.sub.items, perc.upc.match,
+           eitem.upc.cnt, perc.upc.cnt.match,
+           insta.order.qty, eitem.qty,
+           qty.abs.diff, insta.net.sales,
            net_sales)
-  
+
   #partial enlapsed time
   print(Sys.time() - start.time)
-  
+
   ##########################################################
   #Lookup orders that were fulfilled in another Store
   print("Refining matching")
-  insta_1010.refined.df <- 
+  insta_1010.refined.df <-
     instac.df %>%
     select(-Item, -Is.Redelivered) %>%
     #remove perfectly matched Orders from list
-    anti_join(insta_1010_match.df %>% 
+    anti_join(insta_1010_match.df %>%
                 filter(insta_acc==1 & qty.abs.diff < 2),
               by="Order.ID") %>%
     #Look up on the city level
     full_join(eitem.df %>%
-                filter(insta_acc==1) %>% 
-                select(store, 
-                       transid, 
-                       city, 
-                       upc, 
-                       qty, 
-                       date, 
-                       eitemupccnt, 
-                       insta_acc, 
-                       eitem.qty, 
+                filter(insta_acc==1) %>%
+                select(store,
+                       transid,
+                       city,
+                       upc,
+                       qty,
+                       date,
+                       eitemupccnt,
+                       insta_acc,
+                       eitem.qty,
                        net_sales),
               by=c('city', 'upc')) %>%
     filter(!is.na(transid) & !is.na(Order.ID)) %>%
     #group back to order level
-    group_by(Store.Location, Order.ID, transid, 
+    group_by(Store.Location, Order.ID, transid,
              date, deliv.date, city) %>%
     #add aux columns
     summarise(insta_acc=mean(insta_acc),
@@ -270,42 +287,42 @@ match.orders <- function(df,
     top_n(1, upcs.matched.in.eitem) %>%
     top_n(-1, qty.abs.diff) %>%
     #rearrange columns
-    select(Store.Location, city, Order.ID, transid, deliv.date, 
-           eitem.date=date, date.diff, insta_acc, insta.upcs.cnt, 
+    select(Store.Location, city, Order.ID, transid, deliv.date,
+           eitem.date=date, date.diff, insta_acc, insta.upcs.cnt,
            upcs.matched.in.eitem, t.sub.items, perc.upc.match, eitem.upc.cnt,
-           perc.upc.cnt.match, insta.order.qty, 
+           perc.upc.cnt.match, insta.order.qty,
            eitem.qty, qty.abs.diff, insta.net.sales, net_sales)
-  
+
   #partial enlapsed time
   print(Sys.time() - start.time)
-  
+
   #Append Orders matched by city to orders matched by upc
   insta_1010.refined.df <- insta_1010_match.df %>%
     bind_rows(insta_1010.refined.df) %>%
     #Select best matches between lookup by city and by upc
-    top_n(1,upcs.matched.in.eitem) %>% 
+    top_n(1,upcs.matched.in.eitem) %>%
     top_n(-1,qty.abs.diff) %>%
     top_n(1,abs(perc.upc.cnt.match)) %>%
     top_n(-1,abs(date.diff))%>%
     #remove possible duplicates in case lookup by city and by upc returns the same order
     distinct_all()
-  
+
   #partial enlapsed time
   print(Sys.time() - start.time)
-  
+
   ##########################################################
   #Lookup orders with insta tender type having exact same net_sales total in the same store.
-  insta_1010.refined.df <- 
+  insta_1010.refined.df <-
     instac.df %>%
-    select(Store.Location, Order.ID, 
-           insta.upcs.cnt, insta.net.sales, 
+    select(Store.Location, Order.ID,
+           insta.upcs.cnt, insta.net.sales,
            insta.order.qty, deliv.date, t.sub.items) %>%
     #remove perfectly matched Orders
-    anti_join(insta_1010.refined.df %>% 
+    anti_join(insta_1010.refined.df %>%
                 filter(insta_acc==1 & qty.abs.diff < 1),
               by="Order.ID") %>%
     #Look up on the city level
-    left_join(y=eitem.df %>% 
+    left_join(y=eitem.df %>%
                 select(store,
                        city,
                        transid,
@@ -315,7 +332,7 @@ match.orders <- function(df,
                        eitem.qty,
                        eitem.upc.cnt=eitemupccnt) %>%
                 filter(insta_acc==1),
-              by=c('Store.Location'='store', 
+              by=c('Store.Location'='store',
                    'insta.net.sales'='net_sales')) %>% #Consider Including Category in the lookup
     filter(!is.na(transid)) %>%
     distinct_all() %>%
@@ -328,10 +345,10 @@ match.orders <- function(df,
            net_sales=insta.net.sales) %>%
     #rearrange columns
     select(Store.Location, city, Order.ID, transid, deliv.date,
-           eitem.date, date.diff, insta_acc, insta.upcs.cnt, 
+           eitem.date, date.diff, insta_acc, insta.upcs.cnt,
            upcs.matched.in.eitem, perc.upc.match, eitem.upc.cnt,
            t.sub.items, perc.upc.cnt.match, perc.upc.cnt.match,
-           insta.order.qty, eitem.qty, qty.abs.diff, 
+           insta.order.qty, eitem.qty, qty.abs.diff,
            insta.net.sales, net_sales) %>%
     #merge to main dataframe
     bind_rows(insta_1010.refined.df) %>%
@@ -339,8 +356,8 @@ match.orders <- function(df,
     group_by(Order.ID) %>%
     #pick best matches
     top_n(1,insta_acc) %>%
-    top_n(-1,(insta.net.sales-net_sales)) %>% 
-    top_n(-1,qty.abs.diff) %>% 
+    top_n(-1,(insta.net.sales-net_sales)) %>%
+    top_n(-1,qty.abs.diff) %>%
     top_n(1,abs(perc.upc.cnt.match)) %>%
     top_n(-1,abs(date.diff)) %>%
     top_n(-1,upcs.matched.in.eitem)
