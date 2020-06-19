@@ -1,10 +1,7 @@
 library(dplyr)
 library(R1010)
-library(data.table)
 library(DescTools)
-
-###################
-# Import InstaCart Data
+library(data.table)
 
 #' Find equivalent transaction in TSMC POS system for every Order generated
 #' through InstaCart.
@@ -22,6 +19,7 @@ library(DescTools)
 #'
 #' @examples
 #'
+
 match_orders <- function(df,
                         start.date=NULL,
                         end.date=NULL,
@@ -31,13 +29,15 @@ match_orders <- function(df,
   if (!exists('df')) {
     return(stop("df not defined. df argument must be a either InstaCart dataframe or a string path referencing a file"))
   }
-  if (is.character(df) & like(df, "*.csv", ignore.case = T)) {
+  if (is.character(df) & data.table::like(df, "*.csv", ignore.case = T)) {
     df <- tryCatch({read.csv(df)},
                    error=stop("Couldn't read CSV file. Check path and file name"))
   } else {
     df <- as.data.frame(df)
   }
 
+  ###################
+# Import InstaCart Data
   print("Processing")
   #start
   instac.df <- data.table(df) %>%
