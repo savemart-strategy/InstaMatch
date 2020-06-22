@@ -1,11 +1,3 @@
-library(dplyr)
-library(R1010)
-library(DescTools)
-library(data.table)
-
-###################
-# Import InstaCart Data
-
 #' Find equivalent transaction in TSMC POS system for every Order generated
 #' through InstaCart.
 #'
@@ -22,6 +14,7 @@ library(data.table)
 #'
 #' @examples
 #'
+
 match_orders <- function(df,
                         start.date=NULL,
                         end.date=NULL,
@@ -40,6 +33,8 @@ match_orders <- function(df,
 
   print("Processing")
   #start
+  ###################
+  #Import InstaCart Data
   instac.df <- data.table(df) %>%
     select(Order.ID,
            Delivery.Date,
