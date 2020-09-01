@@ -15,7 +15,7 @@
 #'
 #' @examples
 #'
-
+#' @export
 match_orders <- function(df,
                         start.date=NULL,
                         end.date=NULL,
