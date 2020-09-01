@@ -82,11 +82,11 @@ match_orders <- function(df,
 
    #Logon
    print("Logging on to 1010")
-   sess <- R1010::newSession(r1010.user.name, r1010.password, kill = "pos")
+   sess <- newSession(r1010.user.name, r1010.password, kill = "pos")
   }
    #query stores on 1010
   print(paste(r1010.user.name, r1010.password))
-   stores.df <- tryCatch({R1010::openTable(sess, "savemart.stores",
+   stores.df <- tryCatch({openTable(sess, "savemart.stores",
                             row.range = 'all') %>%
                           select(store, city)},
                           error=stop("Could't log on to 1010. Check credentials and try again"))
@@ -102,7 +102,7 @@ match_orders <- function(df,
    }
    print("Fetching 1010's data")
    #Query transactions on 1010
-   eitem <- R1010::openTable(sess, "savemart.eitem")
+   eitem <- openTable(sess, "savemart.eitem")
    query.text <- paste0('<base table="savemart.eitem" cols="date, transid, upc, qty"/>
                          <link table2="savemart.tender" col="date,transid"
                                 col2="date,transid" cols="account,tender_desc"
@@ -138,7 +138,7 @@ match_orders <- function(df,
                                         if(padright(account;4)=5553;1;0))"/>')
 
   # run query
-  eitem.df <- R1010::query(eitem, query.text, row.range = 'All')
+  eitem.df <- query(eitem, query.text, row.range = 'All')
   #convert date
   eitem.df$date <- as.Date(eitem.df$date)
 
