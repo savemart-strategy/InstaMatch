@@ -36,7 +36,7 @@ match_orders <- function(df,
   print("Processing")
 
   #show progress bar
-  pb <<- winProgressBar(title = "progress bar", min = 0, max = 100, width = 500)
+  pb <- winProgressBar(title = "progress bar", min = 0, max = 100, width = 500)
 
   #start
   ###################
