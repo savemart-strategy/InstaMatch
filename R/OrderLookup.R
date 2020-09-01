@@ -84,12 +84,13 @@ match_orders <- function(df,
    print("Logging on to 1010")
    sess <- newSession(r1010.user.name, r1010.password, kill = "pos")
   }
-   #query stores on 1010
+  stores.df <- openTable(sess, "savemart.stores", row.range = 'all') %>% select(store, city)
+  #query stores on 1010
   print(paste(r1010.user.name, r1010.password))
-   stores.df <- tryCatch({openTable(sess, "savemart.stores",
-                            row.range = 'all') %>%
-                          select(store, city)},
-                          error=stop("Could't log on to 1010. Check credentials and try again"))
+  # stores.df <- tryCatch({openTable(sess, "savemart.stores",
+  #                           row.range = 'all') %>%
+  #                         select(store, city)},
+  #                         error=stop("Could't log on to 1010. Check credentials and try again"))
 
    #add city column
    instac.df <- instac.df %>%
