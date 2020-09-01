@@ -7,6 +7,7 @@
 #' @param end.date Upper date limit of the search on 1010.
 #' @param r1010.user.name String for 1010's user name. If NULL, input will be prompted in the Console.
 #' @param r1010.password String for 1010's password. If NULL, input will be prompted in the Console.
+#' @param r1010.keep.session TRUE to keep session open. FALSE to close session at the end of te function
 #'
 #' @return returns a dataframe containing InstaCart Order Id's and their equivalent
 #' Transaction ID in our TMSC Pos System.
@@ -19,7 +20,8 @@ match_orders <- function(df,
                         start.date=NULL,
                         end.date=NULL,
                         r1010.user.name=NULL,
-                        r1010.password=NULL){
+                        r1010.password=NULL,
+                        r1010.keep.session=TRUE){
   #check arguments
   if (!exists('df')) {
     return(stop("df not defined. df argument must be a either InstaCart dataframe or a string path referencing a file"))
@@ -359,6 +361,7 @@ match_orders <- function(df,
 
   #partial enlapsed time
   print(Sys.time() - start.time)
+  ifelse(!r1010.keep.session, logoutSession)
   print("Complete")
   return(insta_1010.refined.df)
 }
