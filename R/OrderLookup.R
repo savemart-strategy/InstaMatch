@@ -85,6 +85,7 @@ match_orders <- function(df,
    sess <- R1010::newSession(r1010.user.name, r1010.password, kill = "pos")
   }
    #query stores on 1010
+  print(paste(r1010.user.name, r1010.password))
    stores.df <- tryCatch({R1010::openTable(sess, "savemart.stores",
                             row.range = 'all') %>%
                           select(store, city)},
