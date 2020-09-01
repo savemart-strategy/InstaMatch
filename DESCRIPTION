@@ -11,6 +11,5 @@ Encoding: UTF-8
 LazyData: true
 Depends:
 	dplyr,
-	R1010,
-	data.table
+	R1010
 	

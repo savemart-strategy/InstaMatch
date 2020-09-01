@@ -2,4 +2,3 @@ exportPattern("^[[:alpha:]]+")
 
 #' @import dplyr
 #' @import R1010
-#' @import data.table
