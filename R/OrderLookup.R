@@ -309,7 +309,7 @@ match_orders <- function(df,
            perc.upc.cnt.match, insta.order.qty,
            eitem.qty, qty.abs.diff, insta.net.sales, net_sales)
   #Update progress bar
-  update_pb(85, pb)
+  update_pb(85, pb, "Processing")
   #partial enlapsed time
   print(Sys.time() - start.time)
 
@@ -382,7 +382,9 @@ match_orders <- function(df,
     top_n(-1,upcs.matched.in.eitem)
 
   #partial enlapsed time
-  print(Sys.time() - start.time)
+  #print(Sys.time() - start.time)
+
+  #Close 1010 session
   if(!r1010.keep.session) logoutSession(sess)
   print("Complete")
 
