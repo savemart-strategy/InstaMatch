@@ -152,7 +152,7 @@ match_orders <- function(df,
   # run query
   eitem.df <- query(eitem, query.text, row.range = 'All')
   #Update progress bar
-  update_pb(50, pb)
+  update_pb(50, pb, "Processing")
 
   #convert date
   eitem.df$date <- as.Date(eitem.df$date)
@@ -393,7 +393,7 @@ match_orders <- function(df,
   return(insta_1010.refined.df)
 }
 
-update_pb <- function(perc_done, pb, label){
+update_pb <- function(perc_done, pb, label=NULL){
   #Update progress bar
   setWinProgressBar(pb, perc_done, title=paste(perc_done,"% done"), label = label)
 }
