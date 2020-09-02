@@ -252,7 +252,7 @@ match_orders <- function(df,
   #Update progress bar
   update_pb(75, pb, "Finding matches in other locations")
   #partial enlapsed time
-  print(Sys.time() - start.time)
+  #print(Sys.time() - start.time)
 
   ##########################################################
   #Lookup orders that were fulfilled in another Store
@@ -311,7 +311,7 @@ match_orders <- function(df,
   #Update progress bar
   update_pb(85, pb, "Processing")
   #partial enlapsed time
-  print(Sys.time() - start.time)
+  #print(Sys.time() - start.time)
 
   #Append Orders matched by city to orders matched by upc
   insta_1010.refined.df <- insta_1010_match.df %>%
@@ -325,7 +325,7 @@ match_orders <- function(df,
     distinct_all()
 
   #partial enlapsed time
-  print(Sys.time() - start.time)
+  #print(Sys.time() - start.time)
 
   #Update progress bar
   update_pb(90, pb, "Processing")
