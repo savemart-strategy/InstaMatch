@@ -37,6 +37,7 @@ match_orders <- function(df,
 
   #show progress bar
   pb <- winProgressBar(title = "progress bar", min = 0, max = 100, width = 500)
+  update_pb(10, pb, "Preparing")
 
   #start
   ###################
@@ -74,7 +75,7 @@ match_orders <- function(df,
     ungroup()
 
   #Update progress bar
-  update_pb(10, pb)
+  update_pb(20, pb, "Creating 1010 session")
 #####################################################
 # Import 1010 Data
 
@@ -98,7 +99,7 @@ match_orders <- function(df,
   #                         select(store, city)},
   #                         error=stop("Could't log on to 1010. Check credentials and try again"))
   #Update progress bar
-  update_pb(20, pb)
+  update_pb(20, pb, "Preparing to fetch data")
 
    #add city column
    instac.df <- instac.df %>%
@@ -106,11 +107,11 @@ match_orders <- function(df,
      mutate(city.query=paste0("'",city,"'"))
 
    if (is.null(start.date) | is.null(end.date)) {
-     start.date <- format(min(instac.df$deliv.date)-4, "%Y%m%d")
-     end.date <- format(min(instac.df$deliv.date)+7, "%Y%m%d")
+     start.date <- format(min(instac.df$deliv.date)-2, "%Y%m%d")
+     end.date <- format(min(instac.df$deliv.date)+6, "%Y%m%d")
    }
    #Update progress bar
-   update_pb(30, pb)
+   update_pb(30, pb, "Fetching 1010 data. This may take several minutes")
 
    print("Fetching 1010 data. This may take several minutes")
    #Query transactions on 1010
@@ -123,7 +124,6 @@ match_orders <- function(df,
                                 col2="store" cols="division, city"
                                 type="exact"/>
                          <sel value="(between(date;', start.date,';', end.date,'))"/>
-
                          <sel value="(city=', paste(unique(instac.df$city.query),
                                                     collapse = ' ') %>% as.factor(), ')"/>
                          <link table2="savemart.products" col="upc"
@@ -178,7 +178,7 @@ match_orders <- function(df,
   #start.time <- Sys.time()
 
   #Update progress bar
-  update_pb(55, pb)
+  update_pb(55, pb, "Processing transactions")
   print("Processing. Might take a few seconds")
   #Match UPCS by transaction
   insta_1010_match.df <- data.table(instac.df) %>%
@@ -206,11 +206,7 @@ match_orders <- function(df,
     #pick transactions with most UPC matches
     top_n(1,insta_acc) %>% #select transactions where tender type is Instacart
     top_n(1,upcs.matched.in.eitem) %>% #select transactions with most upc matches
-
-    #Update progress bar
-    update_pb(65, pb)
-
-  #add more transaction level details from Instacart
+    #add more transaction level details from Instacart
     plyr::join(y=instac.df %>%
                  select(Order.ID,
                         deliv.date,
@@ -254,7 +250,7 @@ match_orders <- function(df,
            qty.abs.diff, insta.net.sales,
            net_sales)
   #Update progress bar
-  update_pb(75, pb)
+  update_pb(75, pb, "Finding matches in other locations")
   #partial enlapsed time
   print(Sys.time() - start.time)
 
@@ -332,7 +328,7 @@ match_orders <- function(df,
   print(Sys.time() - start.time)
 
   #Update progress bar
-  update_pb(90, pb)
+  update_pb(90, pb, "Processing")
   ##########################################################
   #Lookup orders with insta tender type having exact same net_sales total in the same store.
   insta_1010.refined.df <-
@@ -391,13 +387,13 @@ match_orders <- function(df,
   print("Complete")
 
   #Update progress bar
-  update_pb(100, pb)
+  update_pb(100, pb, "Finishing")
   close(pb)
 
   return(insta_1010.refined.df)
 }
 
-update_pb <- function(perc_done, pb){
+update_pb <- function(perc_done, pb, label){
   #Update progress bar
-  setWinProgressBar(pb, perc_done, title=paste(round(perc_done/100*100, 0),"% done"))
+  setWinProgressBar(pb, perc_done, title=paste(perc_done,"% done"), label = label)
 }
